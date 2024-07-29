@@ -6,8 +6,6 @@ Path: polkadot-sdk/substrate/frame/elections-phragmen
 
 Name : pallet-elections-phragmen
 
-
-
 ```rust
 fn do_phragmen() -> Weight {
   
@@ -100,11 +98,7 @@ fn do_phragmen() -> Weight {
 
 
 
-
-
 Phragmen 算法的核心部分，它的功能是从给定的候选人和投票者列表中选出指定数量的候选人
-
-
 
 ```rust
 pub fn seq_phragmen<AccountId: IdentifierT, P: PerThing128>(

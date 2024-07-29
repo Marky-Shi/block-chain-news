@@ -619,7 +619,6 @@ pub fn slash(
    ratio = \frac{250}{100} = 0.4
    $$
    
-
 2. **削减 active 部分**： 
    $$
    SlashFromActive=0.4×150=60 
@@ -635,7 +634,7 @@ pub fn slash(
    $$
    SlashFromChunk_1=0.4×50=20
    $$
-    
+   
    $$
    NewChunkValue_1=50−20=30
    $$
@@ -668,4 +667,3 @@ pub fn slash(
    $$
    NewTotal=100+50+50=200
    $$
-   
