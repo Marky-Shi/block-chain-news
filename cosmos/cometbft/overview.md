@@ -9,7 +9,7 @@ Cosmos 的基建L0层，负责区块产生、共识，节点同步，状态更�
 ```shell
 cd cometbft && make build
 ./build/comebft init  --proxy_app=kvstore 
-./build/comebft start  --proxy_app=kvstore 
+./build/comebft start  --proxy_app=kvstore
 ```
 
 ```shell
@@ -2143,3 +2143,85 @@ func (conR *Reactor) Receive(e p2p.Envelope) {
 >   - 如果反应器不在同步状态，则处理投票消息。更新对等节点的投票状态，并将投票消息放入反应器的`peerMsgQueue`中。
 > - VoteSetBitsChannel：
 >   - 如果反应器不在同步状态，则处理投票集合位消息。根据消息中的高度和投票类型，获取本地的投票集合位信息，并应用接收到的投票集合位消息。
+
+
+
+### ABCI++ 
+
+```go
+// Application is an interface that enables any finite, deterministic state machine
+// to be driven by a blockchain-based replication engine via the ABCI.
+type Application interface {
+	// Info/Query Connection
+
+	Info(ctx context.Context, req *InfoRequest) (*InfoResponse, error)    // Return application info
+	Query(ctx context.Context, req *QueryRequest) (*QueryResponse, error) // Query for state
+
+	// Mempool Connection
+
+	CheckTx(ctx context.Context, req *CheckTxRequest) (*CheckTxResponse, error) // Validate a tx for the mempool
+
+	// Consensus Connection
+
+	InitChain(ctx context.Context, req *InitChainRequest) (*InitChainResponse, error) // Initialize blockchain w validators/other info from CometBFT
+	PrepareProposal(ctx context.Context, req *PrepareProposalRequest) (*PrepareProposalResponse, error)
+	ProcessProposal(ctx context.Context, req *ProcessProposalRequest) (*ProcessProposalResponse, error)
+	// FinalizeBlock delivers the decided block with its txs to the Application
+	FinalizeBlock(ctx context.Context, req *FinalizeBlockRequest) (*FinalizeBlockResponse, error)
+	// ExtendVote extends the vote with application specific data
+	ExtendVote(ctx context.Context, req *ExtendVoteRequest) (*ExtendVoteResponse, error)
+	// VerifyVoteExtension verifies the application's vote extension data for correctness.
+	VerifyVoteExtension(ctx context.Context, req *VerifyVoteExtensionRequest) (*VerifyVoteExtensionResponse, error)
+	// Commit the state and return the application Merkle root hash
+	Commit(ctx context.Context, req *CommitRequest) (*CommitResponse, error)
+
+	// State Sync Connection
+
+	ListSnapshots(ctx context.Context, req *ListSnapshotsRequest) (*ListSnapshotsResponse, error)                // List available snapshots
+	OfferSnapshot(ctx context.Context, req *OfferSnapshotRequest) (*OfferSnapshotResponse, error)                // Offer a snapshot to the application
+	LoadSnapshotChunk(ctx context.Context, req *LoadSnapshotChunkRequest) (*LoadSnapshotChunkResponse, error)    // Load a snapshot chunk
+	ApplySnapshotChunk(ctx context.Context, req *ApplySnapshotChunkRequest) (*ApplySnapshotChunkResponse, error) // Apply a snapshot chunk
+}
+```
+
+* InitChain： 初始化区块链状态。区块链节点**首次启动**时调用。它设置初始状态，包括共识参数和初始验证器集。
+* Info：提供有关应用程序的信息。调用以检索应用程序版本、最新高度和应用程序状态哈希等信息。
+* Query：查询应用的状态。允许外部客户端查询应用程序的特定数据，例如交易详情
+* CheckTx：在将单个交易添加到内存池之前对其进行验证。每个第一次接收交易的节点都会运行此方法来确保交易有效。
+* PrepareProposal：在最终确定之前修改区块提案。验证者收集待处理的交易，创建“raw proposal”。然后应用程序可以重新排序、添加或删除交易，创建“prepared proposal.”。
+* ProcessProposal：根据特定于应用程序的规则验证区块提案。验证者评估提议并可以拒绝无效区块。如果被拒绝，共识算法将执行零预投票。
+* ExtendVote：将特定于应用程序的数据添加到预提交消息。验证者可以在其预提交消息中添加投票扩展，应用程序稍后可以使用这些扩展。如果没有添加数据，则返回零长度字节数组。此方法可以使用非确定性逻辑
+* VerifyVoteExtension：验证预提交消息中的投票扩展数据。检查投票扩展的完整性。如果无效，则整个预提交消息将被拒绝。
+* FinalizeBlock：处理已决定的提案并更新申请的状态。包括 FinalizeBlockRequest，其中包含要执行的事务和不当行为的证据等信息。FinalizeBlockResponse 包括事务结果、验证器集的更新、共识参数的更改和 app_hash 等信息。直到commit阶段，更改才会持久化
+* Commit：持久化存储最终的状态变化。在提交之前，内存池被锁定，以防止新交易到达应用程序。应用程序必须持久保存状态更改以确保区块链的完整性和可靠性。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
