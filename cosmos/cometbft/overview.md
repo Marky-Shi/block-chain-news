@@ -2195,7 +2195,7 @@ type Application interface {
 * FinalizeBlock：处理已决定的提案并更新申请的状态。包括 FinalizeBlockRequest，其中包含要执行的事务和不当行为的证据等信息。FinalizeBlockResponse 包括事务结果、验证器集的更新、共识参数的更改和 app_hash 等信息。直到commit阶段，更改才会持久化
 * Commit：持久化存储最终的状态变化。在提交之前，内存池被锁定，以防止新交易到达应用程序。应用程序必须持久保存状态更改以确保区块链的完整性和可靠性。
 
-
+![tx](./tx flower.webp)
 
 
 
