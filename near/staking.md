@@ -1,8 +1,8 @@
 ## Staking  
 
-这里主要是记录staking reward的计算方式的
+这里主要是记录 staking reward 的计算方式的
 
-在之前的epoch 中提到过每个epoch结束的时候会同意进行reward/slash的计算
+在之前的 epoch 中提到过每个 epoch 结束的时候会统一进行 reward/slash 的计算
 
 ```rust
 fn finalize_epoch(
@@ -292,16 +292,4 @@ $$
 $$
 {uptime\_denum} = (\text{online\_max\_numer} \times \text{online\_min\_denom} - \text{online\_min\_numer} \times \text{online\_max\_denom}) \times \text{average\_produced\_denom}
 $$
-
-
-
-
-
-
-
-
-
-
-
-
 

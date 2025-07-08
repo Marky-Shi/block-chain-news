@@ -1,12 +1,12 @@
 ## TX lifetime
 
-在之前已经介绍过了，near中的消息种类，以及near 是基于分片的L1 层区块链平台。交易到底是如何执行，状态又是如何被更改的呢？ 从传统区块链的角度来看交易的生命周期无非就是  `客户签名`-----> `进入mempool`（需要进行基础的校验，账户余额，nonce 等）------> `构建区块之后打包进区块` ------> `节点同步之后进行完整校验，执行通过之后则会进行状态的更改`。
+在之前已经介绍过了，NEAR 中的消息种类，以及 NEAR 是基于分片的 L1 层区块链平台。交易到底是如何执行，状态又是如何被更改的呢？从传统区块链的角度来看交易的生命周期无非就是：`客户签名` → `进入 mempool`（需要进行基础的校验，账户余额，nonce 等）→ `构建区块之后打包进区块` → `节点同步之后进行完整校验，执行通过之后则会进行状态的更改`。
 
-near与传统区块链平台不同的地方则是分片的应用，所以交易生命周期部分还是类似的。
+NEAR 与传统区块链平台不同的地方则是分片的应用，所以交易生命周期部分还是类似的。
 
 ### 最开始的构建交易
 
-通过JS/rust sdk 进行dapp或者其他的开发，发送一笔交易
+通过 JS/Rust SDK 进行 dapp 或者其他的开发，发送一笔交易
 
 ```js
 const account = await nearConnection.account("example-account.testnet");
@@ -15,7 +15,7 @@ const transactionOutcome = await account.deployContract(
 );
 ```
 
-交易签名： ed25519/Secp256K1 这两个签名算法
+交易签名：ed25519/Secp256K1 这两个签名算法
 
 ### 监听
 
@@ -36,6 +36,34 @@ fn process_tx_internal(
         check_only: bool,
         signer: &Option<Arc<ValidatorSigner>>,
     ) -> Result<ProcessTxResponse, Error> {
+        // 1. 基础验证
+        self.validate_transaction_basic(tx)?;
+        
+        // 2. 签名验证
+        if !tx.signature.verify(tx.get_hash().as_ref(), &tx.transaction.public_key) {
+            return Err(Error::InvalidTxSignature);
+        }
+        
+        // 3. 检查nonce和账户状态
+        let signer_account = self.get_account(&tx.transaction.signer_id)?;
+        if tx.transaction.nonce <= signer_account.nonce {
+            return Err(Error::InvalidNonce);
+        }
+        
+        // 4. 检查余额是否足够支付gas费用
+        let gas_cost = tx.transaction.gas_price * tx.transaction.gas;
+        if signer_account.amount < gas_cost {
+            return Err(Error::InsufficientBalance);
+        }
+        
+        // 5. 路由到正确的分片
+        let target_shard = self.get_target_shard(&tx.transaction.receiver_id);
+        if target_shard != self.current_shard_id {
+            return self.forward_transaction_to_shard(tx, target_shard);
+        }
+        
+        // 6. 执行交易
+        self.execute_transaction(tx, check_only)
       	//区块头校验
       // 检查交易是否过期：通过 cur_block_header 和 transaction_validity_period 确认交易是否在有效期内，避免处理过期的交易。
       if let Err(e) = self.chain.chain_store().check_transaction_validity_period(
@@ -428,5 +456,4 @@ pub fn apply(
 
 `process_transactions` 这个方法只是处理单个签名交易，并将其转换为交易收据。 而实际上的执行合约的消息/转账/部署合约/质押等一系列的操作处理，都是在`process_receipts` 里，也涉及了near 的vm（wasm）的执行合约。感兴趣的朋友可深入研究。
 
-总结，从使用sdk 签发交易开始，一直到交易打包成区块，交易一共被**验证了两次**，在构建区块的时候，有需要计算gas used，下一个区块的gas-price等一系列的多工作，值得注意的是tx是包含在chunk中的，而多个chunk 组成了一个区块。实际上执行消息是从block---> chunk---> tx 的层层递进的。由于关注点并不在于near 的经济模型，感兴趣的朋友可以自行去研究，这部分设计的还是蛮有意思的。
-
+总结，从使用 SDK 签发交易开始，一直到交易打包成区块，交易一共被**验证了两次**，在构建区块的时候，有需要计算 gas used，下一个区块的 gas-price 等一系列的多工作，值得注意的是 tx 是包含在 chunk 中的，而多个 chunk 组成了一个区块。实际上执行消息是从 block → chunk → tx 的层层递进的。由于关注点并不在于 NEAR 的经济模型，感兴趣的朋友可以自行去研究，这部分设计的还是蛮有意思的。
